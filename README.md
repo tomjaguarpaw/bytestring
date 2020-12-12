@@ -1,13 +1,13 @@
-# ByteString: Fast, Packed Strings of Bytes
+# ByteString: Fast, Packed Vectors of Bytes
 
 [![Build Status](https://github.com/haskell/bytestring/workflows/ci/badge.svg)](https://github.com/haskell/bytestring/actions?query=workflow%3Aci) [![Hackage](http://img.shields.io/hackage/v/bytestring.svg)](https://hackage.haskell.org/package/bytestring) [![Hackage CI](https://matrix.hackage.haskell.org/api/v2/packages/bytestring/badge)](https://matrix.hackage.haskell.org/package/bytestring) [![Stackage LTS](http://stackage.org/package/bytestring/badge/lts)](http://stackage.org/lts/package/bytestring) [![Stackage Nightly](http://stackage.org/package/bytestring/badge/nightly)](http://stackage.org/nightly/package/bytestring)
 
 This library provides the `Data.ByteString` module -- strict and lazy
-byte arrays manipulable as strings -- providing very time/space-efficient
-string and IO operations.
+byte arrays manipulable as vectors -- providing very time/space-efficient
+vector and IO operations.
 
 For very large data requirements, or constraints on heap size,
-`Data.ByteString.Lazy` is provided, a lazy list of bytestring chunks.
+`Data.ByteString.Lazy` is provided, a lazy list of byte vector chunks.
 Efficient processing of multi-gigabyte data can be achieved this way.
 
 The library also provides `Data.ByteString.Builder` for efficient construction
@@ -17,6 +17,11 @@ Requirements:
 
   * Cabal 1.10 or greater
   * GHC 7.0 or greater
+
+### Naming
+
+Although the name of the data type (and package) refers to "string",
+the data type is actually more accurately a *vector* of bytes.
 
 ### Authors
 

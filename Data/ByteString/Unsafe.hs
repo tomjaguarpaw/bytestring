@@ -124,9 +124,9 @@ unsafeDrop n (BS x l) = assert (0 <= n && n <= l) $ BS (plusForeignPtr x n) (l-n
 
 
 -- | /O(1)/ 'unsafePackAddressLen' provides constant-time construction of
--- 'ByteString's, which is ideal for string literals. It packs a sequence
--- of bytes into a 'ByteString', given a raw 'Addr#' to the string, and
--- the length of the string.
+-- 'ByteString's, which is ideal for vector literals. It packs a sequence
+-- of bytes into a 'ByteString', given a raw 'Addr#' to the vector, and
+-- the length of the vector.
 --
 -- This function is /unsafe/ in two ways:
 --

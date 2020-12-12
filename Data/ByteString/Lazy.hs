@@ -124,9 +124,9 @@ module Data.ByteString.Lazy (
         -- ** Unfolding ByteStrings
         unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
 
-        -- * Substrings
+        -- * Subvectors
 
-        -- ** Breaking strings
+        -- ** Breaking vectors
         take,                   -- :: Int64 -> ByteString -> ByteString
         drop,                   -- :: Int64 -> ByteString -> ByteString
         splitAt,                -- :: Int64 -> ByteString -> (ByteString, ByteString)
@@ -141,7 +141,7 @@ module Data.ByteString.Lazy (
         stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
         stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
 
-        -- ** Breaking into many substrings
+        -- ** Breaking into many subvectors
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
 
@@ -150,8 +150,8 @@ module Data.ByteString.Lazy (
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
 --        isInfixOf,              -- :: ByteString -> ByteString -> Bool
 
-        -- ** Search for arbitrary substrings
---        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
+        -- ** Search for arbitrary subvectors
+--        isSubvectorOf,          -- :: ByteString -> ByteString -> Bool
 
         -- * Searching ByteStrings
 
@@ -674,7 +674,7 @@ unfoldr f = unfoldChunk 32
             (c, Just x')  -> Chunk c (unfoldChunk (n*2) x')
 
 -- ---------------------------------------------------------------------
--- Substrings
+-- Subvectors
 
 -- | /O(n\/c)/ 'take' @n@, applied to a ByteString @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
@@ -739,7 +739,7 @@ dropWhile f = dropWhile'
 
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
--- satisfy the predicate and the remainder of the string.
+-- satisfy the predicate and the remainder of the vector.
 --
 -- 'break' @p@ is equivalent to @'span' (not . p)@ and to @('takeWhile' (not . p) &&& 'dropWhile' (not . p))@.
 --
@@ -796,7 +796,7 @@ spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
 
 -- | Similar to 'P.span',
 -- returns the longest (possibly empty) prefix of elements
--- satisfying the predicate and the remainder of the string.
+-- satisfying the predicate and the remainder of the vector.
 --
 -- 'span' @p@ is equivalent to @'break' (not . p)@ and to @('takeWhile' p &&& 'dropWhile' p)@.
 --
@@ -835,7 +835,7 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteString's that
+-- not copy the subvectors, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
@@ -1096,7 +1096,7 @@ partition p (Chunk x xs) = (chunk t ts, chunk f fs)
     (ts, fs) = partition   p xs
 
 -- ---------------------------------------------------------------------
--- Searching for substrings
+-- Searching for subvectors
 
 -- | /O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a prefix of the second.
@@ -1214,7 +1214,7 @@ tails cs@(Chunk c cs')
 -- | /O(n)/ Make a copy of the 'ByteString' with its own storage.
 --   This is mainly useful to allow the rest of the data pointed
 --   to by the 'ByteString' to be garbage collected, for example
---   if a large string has been read in, and only a small part of it
+--   if a large vector has been read in, and only a small part of it
 --   is needed in the rest of the program.
 copy :: ByteString -> ByteString
 copy = foldrChunks (Chunk . S.copy) Empty
@@ -1354,7 +1354,7 @@ hPut h = foldrChunks (\c rest -> S.hPut h c >> rest) (return ())
 
 -- | Similar to 'hPut' except that it will never block. Instead it returns
 -- any tail that did not get written. This tail may be 'empty' in the case that
--- the whole string was written, or the whole original string if nothing was
+-- the whole vector was written, or the whole original vector if nothing was
 -- written. Partial writes are also possible.
 --
 -- Note: on Windows and with Haskell implementation other than GHC, this
@@ -1380,7 +1380,7 @@ putStr = hPut stdout
 
 -- | The interact function takes a function of type @ByteString -> ByteString@
 -- as its argument. The entire input from the standard input device is passed
--- to this function as its argument, and the resulting string is output on the
+-- to this function as its argument, and the resulting vector is output on the
 -- standard output device.
 --
 interact :: (ByteString -> ByteString) -> IO ()
@@ -1409,7 +1409,7 @@ revChunks :: [P.ByteString] -> ByteString
 revChunks = L.foldl' (flip chunk) Empty
 
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
--- of the string if no element is found, rather than Nothing.
+-- of the vector if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
 findIndexOrEnd k (S.BS x l) =
     S.accursedUnutterablePerformIO $

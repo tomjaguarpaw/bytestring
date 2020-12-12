@@ -109,9 +109,9 @@ module Data.ByteString (
         unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
         unfoldrN,               -- :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 
-        -- * Substrings
+        -- * Subvectors
 
-        -- ** Breaking strings
+        -- ** Breaking vectors
         take,                   -- :: Int -> ByteString -> ByteString
         takeEnd,                -- :: Int -> ByteString -> ByteString
         drop,                   -- :: Int -> ByteString -> ByteString
@@ -132,7 +132,7 @@ module Data.ByteString (
         stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
         stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
 
-        -- ** Breaking into many substrings
+        -- ** Breaking into many subvectors
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
 
@@ -141,7 +141,8 @@ module Data.ByteString (
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
         isInfixOf,              -- :: ByteString -> ByteString -> Bool
 
-        -- ** Search for arbitrary substrings
+        -- ** Search for arbitrary subvectors
+        breakSubvector,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
         breakSubstring,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
 
         -- * Searching ByteStrings
@@ -320,7 +321,7 @@ singleton c = unsafeCreate 1 $ \p -> poke p c
 
 -- | /O(n)/ Convert a @['Word8']@ into a 'ByteString'.
 --
--- For applications with large numbers of string literals, 'pack' can be a
+-- For applications with large numbers of vector literals, 'pack' can be a
 -- bottleneck. In such cases, consider using 'unsafePackAddress' (GHC only).
 pack :: [Word8] -> ByteString
 pack = packBytes
@@ -838,7 +839,7 @@ replicate w c
 -- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a
 -- ByteString from a seed value.  The function takes the element and
 -- returns 'Nothing' if it is done producing the ByteString or returns
--- 'Just' @(a,b)@, in which case, @a@ is the next byte in the string,
+-- 'Just' @(a,b)@, in which case, @a@ is the next byte in the vector,
 -- and @b@ is the seed value for further production.
 --
 -- Examples:
@@ -877,7 +878,7 @@ unfoldrN i f x0
 {-# INLINE unfoldrN #-}
 
 -- ---------------------------------------------------------------------
--- Substrings
+-- Subvectors
 
 -- | /O(1)/ 'take' @n@, applied to a ByteString @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
@@ -1024,7 +1025,7 @@ dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
--- satisfy the predicate and the remainder of the string.
+-- satisfy the predicate and the remainder of the vector.
 --
 -- 'break' @p@ is equivalent to @'span' (not . p)@ and to @('takeWhile' (not . p) &&& 'dropWhile' (not . p))@.
 --
@@ -1070,7 +1071,7 @@ breakByte c p = case elemIndex c p of
 {-# INLINE breakByte #-}
 
 -- | Returns the longest (possibly empty) suffix of elements which __do not__
--- satisfy the predicate and the remainder of the string.
+-- satisfy the predicate and the remainder of the vector.
 --
 -- 'breakEnd' @p@ is equivalent to @'spanEnd' (not . p)@ and to @('takeWhileEnd' (not . p) &&& 'dropWhileEnd' (not . p))@.
 --
@@ -1079,7 +1080,7 @@ breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
 
 -- | Similar to 'P.span',
 -- returns the longest (possibly empty) prefix of elements
--- satisfying the predicate and the remainder of the string.
+-- satisfying the predicate and the remainder of the vector.
 --
 -- 'span' @p@ is equivalent to @'break' (not . p)@ and to @('takeWhile' p &&& 'dropWhile' p)@.
 --
@@ -1124,7 +1125,7 @@ spanByte c ps@(BS x l) =
 #endif
 
 -- | Returns the longest (possibly empty) suffix of elements
--- satisfying the predicate and the remainder of the string.
+-- satisfying the predicate and the remainder of the vector.
 --
 -- 'spanEnd' @p@ is equivalent to @'breakEnd' (not . p)@ and to @('takeWhileEnd' p &&& 'dropWhileEnd' p)@.
 --
@@ -1187,7 +1188,7 @@ splitWith predicate (BS fp len) = splitWith0 0 len fp
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteString's that
+-- not copy the subvectors, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
@@ -1502,7 +1503,7 @@ partition f s = unsafeDupablePerformIO $
                        rev (incr p1) (decr p2)
 
 -- --------------------------------------------------------------------
--- Sarching for substrings
+-- Sarching for subvectors
 
 -- |/O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
 -- if the first is a prefix of the second.
@@ -1533,7 +1534,7 @@ stripPrefix bs1@(BS _ l1) bs2
 -- > isSuffixOf x y == reverse x `isPrefixOf` reverse y
 --
 -- However, the real implementation uses memcmp to compare the end of the
--- string only, with no reverse required..
+-- vector only, with no reverse required..
 isSuffixOf :: ByteString -> ByteString -> Bool
 isSuffixOf (BS x1 l1) (BS x2 l2)
     | l1 == 0   = True
@@ -1551,37 +1552,43 @@ stripSuffix bs1@(BS _ l1) bs2@(BS _ l2)
    | bs1 `isSuffixOf` bs2 = Just (unsafeTake (l2 - l1) bs2)
    | otherwise = Nothing
 
--- | Check whether one string is a substring of another.
+-- | Check whether one vector is a subvector of another.
 isInfixOf :: ByteString -> ByteString -> Bool
-isInfixOf p s = null p || not (null $ snd $ breakSubstring p s)
+isInfixOf p s = null p || not (null $ snd $ breakSubvector p s)
 
--- | Break a string on a substring, returning a pair of the part of the
--- string prior to the match, and the rest of the string.
+-- | Break a vector on a subvector, returning a pair of the part of the
+-- vector prior to the match, and the rest of the vector.
 --
 -- The following relationships hold:
 --
--- > break (== c) l == breakSubstring (singleton c) l
+-- > break (== c) l == breakSubvector (singleton c) l
 --
--- For example, to tokenise a string, dropping delimiters:
+-- For example, to tokenise a vector, dropping delimiters:
 --
 -- > tokenise x y = h : if null t then [] else tokenise x (drop (length x) t)
--- >     where (h,t) = breakSubstring x y
+-- >     where (h,t) = breakSubvector x y
 --
--- To skip to the first occurence of a string:
+-- To skip to the first occurence of a vector:
 --
--- > snd (breakSubstring x y)
+-- > snd (breakSubvector x y)
 --
--- To take the parts of a string before a delimiter:
+-- To take the parts of a vector before a delimiter:
 --
--- > fst (breakSubstring x y)
+-- > fst (breakSubvector x y)
 --
--- Note that calling `breakSubstring x` does some preprocessing work, so
--- you should avoid unnecessarily duplicating breakSubstring calls with the same
+-- Note that calling `breakSubvector x` does some preprocessing work, so
+-- you should avoid unnecessarily duplicating breakSubvector calls with the same
 -- pattern.
 --
-breakSubstring :: ByteString -- ^ String to search for
-               -> ByteString -- ^ String to search in
-               -> (ByteString,ByteString) -- ^ Head and tail of string broken at substring
+breakSubvector :: ByteString -- ^ Vector to search for
+               -> ByteString -- ^ Vector to search in
+               -> (ByteString,ByteString) -- ^ Head and tail of vector broken at subvector
+breakSubvector = breakSubstring
+
+-- | The old name for @breakSubvector@
+breakSubstring :: ByteString -- ^ Vector to search for
+               -> ByteString -- ^ Vector to search in
+               -> (ByteString,ByteString) -- ^ Head and tail of vector broken at subvector
 breakSubstring pat =
   case lp of
     0 -> (empty,)
@@ -1784,7 +1791,7 @@ packCStringLen (_, len) =
 -- | /O(n)/ Make a copy of the 'ByteString' with its own storage.
 -- This is mainly useful to allow the rest of the data pointed
 -- to by the 'ByteString' to be garbage collected, for example
--- if a large string has been read in, and only a small part of it
+-- if a large vector has been read in, and only a small part of it
 -- is needed in the rest of the program.
 --
 copy :: ByteString -> ByteString
@@ -1867,7 +1874,7 @@ hPut h (BS ps l) = withForeignPtr ps $ \p-> hPutBuf h p l
 
 -- | Similar to 'hPut' except that it will never block. Instead it returns
 -- any tail that did not get written. This tail may be 'empty' in the case that
--- the whole string was written, or the whole original string if nothing was
+-- the whole vector was written, or the whole original vector if nothing was
 -- written. Partial writes are also possible.
 --
 -- Note: on Windows and with Haskell implementation other than GHC, this
@@ -1942,7 +1949,7 @@ illegalBufferSize handle fn sz =
 -- | Read a handle's entire contents strictly into a 'ByteString'.
 --
 -- This function reads chunks at a time, increasing the chunk size on each
--- read. The final string is then reallocated to the appropriate size. For
+-- read. The final vector is then reallocated to the appropriate size. For
 -- files > half of available memory, this may lead to memory exhaustion.
 -- Consider using 'readFile' in this case.
 --
@@ -1985,7 +1992,7 @@ getContents = hGetContents stdin
 
 -- | The interact function takes a function of type @ByteString -> ByteString@
 -- as its argument. The entire input from the standard input device is passed
--- to this function as its argument, and the resulting string is output on the
+-- to this function as its argument, and the resulting vector is output on the
 -- standard output device.
 --
 interact :: (ByteString -> ByteString) -> IO ()
@@ -2024,7 +2031,7 @@ appendFile = modifyFile AppendMode
 -- Internal utilities
 
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
--- of the string if no element is found, rather than Nothing.
+-- of the vector if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
 findIndexOrEnd k (BS x l) =
     accursedUnutterablePerformIO $ withForeignPtr x g
@@ -2055,7 +2062,7 @@ moduleErrorIO fun msg = throwIO . userError $ moduleErrorMsg fun msg
 moduleErrorMsg :: String -> String -> String
 moduleErrorMsg fun msg = "Data.ByteString." ++ fun ++ ':':' ':msg
 
--- Find from the end of the string using predicate
+-- Find from the end of the vector using predicate
 findFromEndUntil :: (Word8 -> Bool) -> ByteString -> Int
 findFromEndUntil f ps@(BS _ l) = case unsnoc ps of
   Nothing     -> 0

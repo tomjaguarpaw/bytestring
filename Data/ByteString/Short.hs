@@ -12,7 +12,7 @@
 -- Stability   : stable
 -- Portability : ghc only
 --
--- A compact representation suitable for storing short byte strings in memory.
+-- A compact representation suitable for storing short byte vectors in memory.
 --
 -- In typical use cases it can be imported alongside "Data.ByteString", e.g.
 --
@@ -38,11 +38,11 @@ module Data.ByteString.Short (
     --
     -- * 'B.ByteString' unshared: 9 words; 36 or 72 bytes.
     --
-    -- * 'B.ByteString' shared substring: 5 words; 20 or 40 bytes.
+    -- * 'B.ByteString' shared subvector: 5 words; 20 or 40 bytes.
     --
     -- * 'ShortByteString': 4 words; 16 or 32 bytes.
     --
-    -- For the string data itself, both 'ShortByteString' and 'B.ByteString' use
+    -- For the vector data itself, both 'ShortByteString' and 'B.ByteString' use
     -- one byte per element, rounded up to the nearest word. For example,
     -- including the overheads, a length 10 'ShortByteString' would take
     -- @16 + 12 = 28@ bytes on a 32bit platform and @32 + 16 = 48@ bytes on a
@@ -58,16 +58,16 @@ module Data.ByteString.Short (
     --
     -- This will take @1 + 1 + 3@ words (the @ThingId@ constructor +
     -- unpacked @Int@ + unpacked @ShortByteString@), plus the words for the
-    -- string data.
+    -- vector data.
 
     -- ** Heap fragmentation
     -- | With GHC, the 'B.ByteString' representation uses /pinned/ memory,
     -- meaning it cannot be moved by the GC. This is usually the right thing to
-    -- do for larger strings, but for small strings using pinned memory can
+    -- do for larger vectors, but for small vectors using pinned memory can
     -- lead to heap fragmentation which wastes space. The 'ShortByteString'
     -- type (and the @Text@ type from the @text@ package) use /unpinned/ memory
     -- so they do not contribute to heap fragmentation. In addition, with GHC,
-    -- small unpinned strings are allocated in the same way as normal heap
+    -- small unpinned vectors are allocated in the same way as normal heap
     -- allocations, rather than in a separate pinned area.
 
     -- * Conversions

@@ -1,9 +1,11 @@
 Name:                bytestring
 Version:             0.11.0.0
-Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
+Synopsis:            Fast, compact, strict and lazy byte vectors with a list interface
 Description:
-    An efficient compact, immutable byte string type (both strict and lazy)
+    An efficient compact, immutable byte vector type (both strict and lazy)
     suitable for binary or 8-bit character data.
+    Despite the name, the data type is best thought of as a general vector or
+    array type, not a string.
     .
     The 'ByteString' type represents sequences of bytes or 8-bit characters.
     It is suitable for high performance use, both in terms of large data
@@ -13,7 +15,7 @@ Description:
     .
     Two 'ByteString' variants are provided:
     .
-      * Strict 'ByteString's keep the string as a single large array. This
+      * Strict 'ByteString's keep the vector as a single large array. This
         makes them convenient for passing data between C and Haskell.
     .
       * Lazy 'ByteString's use a lazy list of strict chunks which makes it
@@ -30,9 +32,9 @@ Description:
     .
     There is also a 'ShortByteString' type which has a lower memory overhead
     and can can be converted to or from a 'ByteString', but supports very few
-    other operations. It is suitable for keeping many short strings in memory.
+    other operations. It is suitable for keeping many short vectors in memory.
     .
-    'ByteString's are not designed for Unicode. For Unicode strings you should
+    'ByteString's are not designed for Unicode. For Unicode vectors you should
     use the 'Text' type from the @text@ package.
     .
     These modules are intended to be imported qualified, to avoid name clashes
